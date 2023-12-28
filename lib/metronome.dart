@@ -11,6 +11,8 @@ enum MetronomeState {
   Stopping
 }
 
+const List<String> list = <String>['\u{1D15D}', '\u{1D15E}', '\u{1D15F}', '\u{1D160}','\u{1D161}', '\u{1D162}', '\u{1D163}', '\u{1D164}'];
+
 class MetronomeControl extends StatefulWidget {
   MetronomeControl();
   MetronomeControlState createState() => new MetronomeControlState();
@@ -25,6 +27,7 @@ class MetronomeControlState extends State<MetronomeControl> {
   List<int> _tapTimes = [];
 
   int _tempo = 60;
+  double _notePerMinute = 0;
 
   bool _bobPanning = false;
 
@@ -37,6 +40,8 @@ class MetronomeControlState extends State<MetronomeControl> {
   int _tickInterval = 0;
 
   double _rotationAngle=0;
+  String _dropdownValue = list.first;
+  int _selectedNoteIndex = 0;
 
   MetronomeControlState();
 
@@ -180,6 +185,7 @@ class MetronomeControlState extends State<MetronomeControl> {
   @override
   Widget build(BuildContext context) {
     _rotationAngle = _getRotationAngle();
+
     return Column(
         mainAxisSize: MainAxisSize.max,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -197,6 +203,60 @@ class MetronomeControlState extends State<MetronomeControl> {
               )
           ),
           Container(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Text("$_notePerMinute", style: TextStyle(fontSize: 25),),
+              DropdownButton<String>(
+                  value: _dropdownValue,
+                  icon: const Icon(Icons.arrow_downward),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.deepPurple),
+                  underline: Container(
+                  height: 2,
+                    color: Colors.deepPurpleAccent,
+                  ),
+                  onChanged: (String? value) {
+                    if(value != null) {
+                      _selectedNoteIndex = list.indexOf(value!);
+                      double divider = 4 / pow(2, _selectedNoteIndex);
+
+                      _notePerMinute = _tempo / divider;
+                      setState(() {
+
+                      });
+                    }
+
+                  // This is called when the user selects an item.
+                    setState(() {
+                      _dropdownValue = value!;
+                    });
+                },
+                items: list.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text("  $value  ", style: TextStyle(fontSize: 30),),
+                  );
+                }).toList(),
+              )
+            ],
+          ),
+          Slider(
+              value: _tempo.toDouble(),
+              max: 220,
+              divisions: 220,
+              label: _tempo.round().toString(),
+              onChanged: (double value) {
+                setState(() {
+                  _tempo = (value).toInt();
+                  double bps = _tempo / 60;
+                  _tickInterval = 1000 ~/ bps;
+
+                  double divider = 4 / pow(2, _selectedNoteIndex);
+
+                  _notePerMinute = _tempo / divider;
+                });
+              }),
           Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -274,6 +334,10 @@ class MetronomeControlState extends State<MetronomeControl> {
     _tempo = min(_maxTempo, max(_minTempo,_minTempo + (bobPercent * (_maxTempo - _minTempo)).toInt()));
     double bps = _tempo/60;
     _tickInterval = 1000~/bps;
+
+    double divider = 4 / pow(2, _selectedNoteIndex);
+
+    _notePerMinute = _tempo / divider;
 
     setState((){});
   }
