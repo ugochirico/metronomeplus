@@ -1,9 +1,10 @@
+import 'package:dashed_circular_progress_bar/dashed_circular_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/services.dart';
-
+import 'package:carousel_slider/carousel_slider.dart';
 
 enum MetronomeState {
   Playing,
@@ -38,12 +39,18 @@ class MetronomeControlState extends State<MetronomeControl> {
   int _lastEvenTick = 0;
   bool _lastTickWasEven = false;
   int _tickInterval = 0;
-
+  int _tickCount = 0;
   double _rotationAngle=0;
   String _dropdownValue = list.first;
   int _selectedNoteIndex = 0;
+  int pageIndex = 0;
 
-  MetronomeControlState();
+  List<Widget> _widgets = [];
+
+  MetronomeControlState()
+  {
+    _initWidgets();
+  }
 
   @override
   void dispose() {
@@ -95,6 +102,8 @@ class MetronomeControlState extends State<MetronomeControl> {
       _tickTimer?.cancel();
       _metronomeState = MetronomeState.Stopped;
     }
+
+    _tickCount++;
   }
 
   void _stop() {
@@ -182,25 +191,122 @@ class MetronomeControlState extends State<MetronomeControl> {
     return rotationAngle!;
   }
 
+  void _initWidgets() {
+
+    _widgets.add(
+      LayoutBuilder(
+            builder: (context, constraints) {
+              double aspectRatio = 1.5; // height:width
+              double width = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? constraints.maxWidth : constraints.maxHeight / aspectRatio;
+              double height = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? width * aspectRatio : constraints.maxHeight;
+
+              return _wand(width, height);
+            }
+        )
+    );
+
+    _widgets.add(LayoutBuilder(
+            builder: (context, constraints) {
+              double aspectRatio = 1.5; // height:width
+              double width = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? constraints.maxWidth : constraints.maxHeight / aspectRatio;
+              double height = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? width * aspectRatio : constraints.maxHeight;
+
+              return DashedCircularProgressBar.square(
+                dimensions: width * 0.8,
+                progress: 0,
+                maxProgress: pow(2, _selectedNoteIndex).toDouble(),
+                startAngle: 0,
+                foregroundColor: Colors.redAccent,
+                backgroundColor: const Color(0xffeeeeee),
+                foregroundStrokeWidth: 7,
+                backgroundStrokeWidth: 7,
+                foregroundGapSize: 5,
+                foregroundDashSize: 55,
+                backgroundGapSize: 5,
+                backgroundDashSize: 55,
+                animation: true,
+                child: const Icon(
+                    Icons.favorite,
+                    color: Colors.redAccent,
+                    size: 126
+                ),
+              );
+            }
+    ));
+  }
   @override
   Widget build(BuildContext context) {
     _rotationAngle = _getRotationAngle();
+    int numberOfDots = pow(2, _selectedNoteIndex).toInt();
+    debugPrint("number of dots $numberOfDots");
 
-    return Column(
+    return GestureDetector(
+        onHorizontalDragUpdate: (details) {
+        // Swiping in right direction.
+        if (details.delta.dx > 0) {
+          pageIndex--;
+        }
+
+        // Swiping in left direction.
+        if (details.delta.dx < 0) {
+          pageIndex++;
+        }
+        if(pageIndex < 0)
+          pageIndex = 1;
+        else if(pageIndex > 1)
+          pageIndex = 0;
+
+        setState(() {
+
+        });
+      },
+      child: Column(
         mainAxisSize: MainAxisSize.max,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           SizedBox(height: 20),
           Expanded(
-              child: LayoutBuilder(
-                  builder: (context, constraints) {
+            child: Stack(
+              children: [
+                Visibility(maintainSize: false,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  visible: pageIndex == 0,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
                     double aspectRatio = 1.5; // height:width
                     double width = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? constraints.maxWidth : constraints.maxHeight / aspectRatio;
                     double height = (constraints.maxHeight >= constraints.maxWidth * aspectRatio) ? width * aspectRatio : constraints.maxHeight;
 
                     return _wand(width, height);
-                  }
-              )
+                    }
+                  )
+                ),
+                Visibility(maintainSize: false,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  visible: pageIndex == 1,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: List.generate(
+                    numberOfDots,
+                    (index) {
+                      double angle = (index * 2 * pi) / numberOfDots;
+                      double radius = MediaQuery.of(context).size.width / 4;
+
+                      double x = cos(angle) * radius;
+                      double y = sin(angle) * radius;
+
+                      return Positioned(
+                        left: x + MediaQuery.of(context).size.width / 2 - 5,
+                        top: y + MediaQuery.of(context).size.height / 2 - 5,
+                        child: const Icon(Icons.circle, color: Colors.red, size: 10.0)
+                      );
+                    },
+                  ),
+                )
+            )
+          ])
           ),
           Container(height: 20),
           Row(
@@ -274,6 +380,7 @@ class MetronomeControlState extends State<MetronomeControl> {
           ),
           SizedBox(height: 20),
         ]
+    )
     );
   }
 
